@@ -1,0 +1,81 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Main</title>
+    <style>
+      html,head,body { padding:0; margin:0; }
+      body { font-family: calibri, helvetica, arial, sans-serif; }
+    </style>
+
+    <script type="text/javascript" src="app.js"></script>
+  </head>
+  <body>
+    <script type="text/javascript">
+      function addGamepadPort(elmApp) {
+
+
+        var getGamepads =
+          typeof navigator.getGamepads === 'function' ? function () { return navigator.getGamepads(); } :
+          typeof navigator.webkitGetGamepads === 'function' ? function () { return navigator.webkitGetGamepads(); } :
+          function () { return []; }
+
+
+        var previousTimestamp = performance.now();
+
+
+        raf();
+
+
+        function raf() {
+          requestAnimationFrame(onAnimationFrame);
+        }
+
+
+        function onAnimationFrame(timestamp) {
+          raf();
+
+          elmApp.ports.gamepad.send([
+            timestamp - previousTimestamp,
+            [].map.call(getGamepads(), copyGamepad),
+          ]);
+
+          previousTimestamp = timestamp;
+        }
+
+
+        function copyGamepad(g) {
+          return !g ? null : {
+            axes: g.axes,
+            buttons: g.buttons.map(function (b) { return [ b.pressed, b.value ]; }),
+            connected: g.connected,
+            id: g.id,
+            index: g.index,
+            timestamp: g.timestamp,
+          };
+        }
+      }
+
+
+      function addLocalStoragePort(elmApp) {
+        elmApp.ports.localStorageSet.subscribe(function (args) {
+          localStorage.setItem(args.key, args.value);
+        });
+      }
+
+
+      // A single source of truth for the local storage key avoids frustrating bugs
+      var gamepadDatabaseKey = "gamepadDatabase";
+
+      // We pass gamepadDatabaseKey and gamepadDatabaseAsString as flags to Elm
+      var elmApp = Elm.Main.fullscreen({
+        gamepadDatabaseKey: gamepadDatabaseKey,
+        gamepadDatabaseAsString: localStorage[gamepadDatabaseKey] || "",
+      });
+
+      addGamepadPort(elmApp);
+      addLocalStoragePort(elmApp);
+
+    </script>
+  </body>
+</html>
